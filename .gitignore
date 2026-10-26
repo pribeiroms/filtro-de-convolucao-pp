@@ -1,0 +1,33 @@
+# ── Binários e artefatos de compilação ───────────────────────────────
+bin/
+*.o
+*.obj
+*.exe
+*.out
+
+# Binários gerados direto ao lado do fonte (se alguém compilar na mão)
+sequencial/04_convolucao
+sequencial/04_convolucao_instrumentado
+openmp/convolucao_omp
+mpi/convolucao_mpi
+
+# ── Python (scripts de gráficos) ─────────────────────────────────────
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ── Editor e sistema operacional ─────────────────────────────────────
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ── Temporários ──────────────────────────────────────────────────────
+*.log
+*.tmp
+*~
+
+# NÃO ignorar: dados/medicoes/*.csv e graficos/*.png
+# Eles são artefatos de entrega e devem ir para o repositório.
