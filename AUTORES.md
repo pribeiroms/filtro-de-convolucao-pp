@@ -4,7 +4,7 @@ Projeto acadêmico da disciplina **Programação Paralela (CCO085)** —
 Centro Universitário IESB, semestre 2026/2.
 
 **Professor:** Rodrigo Gonçalves Pinto
-**Turma:** CCODM3B 
+**Turma:** CCODM3B
 **Problema:** nº 4 — Filtro de Convolução 2D (blur 3×3)
 
 ---
@@ -13,9 +13,9 @@ Centro Universitário IESB, semestre 2026/2.
 
 | Integrante | Matrícula | Frente |
 |---|---|---|
-| Aluisio Veloso Silva Carvalho | 2412130165 | a decidir |
-| Miguel Ferreira Pedroso | 2412130072 | a decidir |
-| Paula Ribeiro Moreira de Souza | 2412130037 | a decidir |
+| Aluisio Veloso Silva Carvalho | 2412130165 | Baseline e Perfilamento |
+| Miguel Ferreira Pedroso | 2412130072 | OpenMP |
+| Paula Ribeiro Moreira de Souza | 2412130037 | MPI |
 
 As três frentes são:
 
