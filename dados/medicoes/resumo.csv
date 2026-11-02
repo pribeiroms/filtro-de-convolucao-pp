@@ -1,0 +1,4 @@
+versao,N,passes,unidades,execucoes,mediana_s,min_s,max_s,dispersao_pct,checksum
+sequencial,500,30,1,5,0.018706,0.017747,0.019736,10.63,31456625.92
+sequencial,1000,30,1,5,0.07576,0.074377,0.085948,15.27,126659356.09
+sequencial,2000,30,1,5,0.294424,0.285212,0.30289,6.0,508325215.06
