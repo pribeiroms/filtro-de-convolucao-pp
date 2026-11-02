@@ -1,0 +1,10 @@
+# O projeto é compilado e executado em Linux (contêiner e laboratório).
+# Guarda e entrega todos os arquivos de texto com quebras de linha LF,
+# inclusive no Windows, para que scripts e código não quebrem dentro do
+# contêiner por causa do CRLF.
+* text=auto eol=lf
+
+# Binários e documentos: nunca converter.
+*.docx binary
+*.pdf  binary
+*.png  binary
