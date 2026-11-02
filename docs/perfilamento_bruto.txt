@@ -1,0 +1,106 @@
+========================================================
+ Perfilamento do codigo sequencial
+========================================================
+Data da medicao: 2026-11-02 18:09:36 UTC
+Compilador:      g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+CPUs visiveis:   16
+Binario:         bin/convolucao_instr
+Passes:          30
+Repeticoes:      4 por tamanho (a 1a e aquecimento)
+
+A copia instrumentada mede o tempo de cada trecho. A logica de
+calculo e a entrada sao identicas as do codigo de referencia.
+
+--------------------------------------------------------
+ N = 500
+--------------------------------------------------------
+[execucao 1 - aquecimento, descartada]
+N=500 passes=30 checksum=31456625.92
+inicializacao: 0.000135 s (0.68%)
+convolucao:    0.019582 s (98.55%)
+checksum:      0.000153 s (0.77%)
+total:         0.019870 s
+
+[execucao 1 de 3]
+N=500 passes=30 checksum=31456625.92
+inicializacao: 0.000103 s (0.53%)
+convolucao:    0.019075 s (98.68%)
+checksum:      0.000153 s (0.79%)
+total:         0.019331 s
+
+[execucao 2 de 3]
+N=500 passes=30 checksum=31456625.92
+inicializacao: 0.000103 s (0.53%)
+convolucao:    0.019370 s (98.69%)
+checksum:      0.000154 s (0.78%)
+total:         0.019627 s
+
+[execucao 3 de 3]
+N=500 passes=30 checksum=31456625.92
+inicializacao: 0.000104 s (0.51%)
+convolucao:    0.020074 s (98.73%)
+checksum:      0.000153 s (0.75%)
+total:         0.020332 s
+
+--------------------------------------------------------
+ N = 1000
+--------------------------------------------------------
+[execucao 1 - aquecimento, descartada]
+N=1000 passes=30 checksum=126659356.09
+inicializacao: 0.000420 s (0.53%)
+convolucao:    0.077659 s (98.69%)
+checksum:      0.000612 s (0.78%)
+total:         0.078692 s
+
+[execucao 1 de 3]
+N=1000 passes=30 checksum=126659356.09
+inicializacao: 0.000403 s (0.50%)
+convolucao:    0.079327 s (98.74%)
+checksum:      0.000611 s (0.76%)
+total:         0.080341 s
+
+[execucao 2 de 3]
+N=1000 passes=30 checksum=126659356.09
+inicializacao: 0.000407 s (0.51%)
+convolucao:    0.079542 s (98.74%)
+checksum:      0.000608 s (0.75%)
+total:         0.080557 s
+
+[execucao 3 de 3]
+N=1000 passes=30 checksum=126659356.09
+inicializacao: 0.000400 s (0.48%)
+convolucao:    0.081972 s (98.78%)
+checksum:      0.000615 s (0.74%)
+total:         0.082988 s
+
+--------------------------------------------------------
+ N = 2000
+--------------------------------------------------------
+[execucao 1 - aquecimento, descartada]
+N=2000 passes=30 checksum=508325215.06
+inicializacao: 0.001769 s (0.56%)
+convolucao:    0.313251 s (98.68%)
+checksum:      0.002407 s (0.76%)
+total:         0.317427 s
+
+[execucao 1 de 3]
+N=2000 passes=30 checksum=508325215.06
+inicializacao: 0.001721 s (0.54%)
+convolucao:    0.313609 s (98.66%)
+checksum:      0.002522 s (0.79%)
+total:         0.317853 s
+
+[execucao 2 de 3]
+N=2000 passes=30 checksum=508325215.06
+inicializacao: 0.001630 s (0.51%)
+convolucao:    0.317110 s (98.72%)
+checksum:      0.002476 s (0.77%)
+total:         0.321216 s
+
+[execucao 3 de 3]
+N=2000 passes=30 checksum=508325215.06
+inicializacao: 0.001676 s (0.52%)
+convolucao:    0.314959 s (98.68%)
+checksum:      0.002546 s (0.80%)
+total:         0.319182 s
+
