@@ -1,23 +1,18 @@
 # Protocolo de medição
 
-Regras que valem para **todas** as medições do projeto — baseline
-sequencial, OpenMP e MPI —, conforme a Issue #7.
+Regras válidas para todas as medições do projeto — baseline sequencial,
+OpenMP e MPI —, conforme a Issue #7.
 
-O objetivo do protocolo é garantir que os tempos comparados entre as três
-versões tenham sido obtidos da mesma forma. Sem isso, qualquer curva de
-speedup é inválida, porque a diferença medida pode vir do método e não da
-paralelização.
+Tempos obtidos por métodos diferentes não são comparáveis. Este protocolo
+fixa o método.
 
 ---
 
 ## 1. O que é medido
 
+> **A revisar.**
 
-O tempo medido é o da **resolução completa do problema** em cada versão:
-desde que os dados estão prontos para serem processados até que o resultado
-final esteja consolidado e o checksum possa ser calculado.
-
-Concretamente, em cada versão:
+Tempo da resolução completa do problema em cada versão:
 
 | Versão | Início da medição | Fim da medição |
 |---|---|---|
@@ -25,66 +20,52 @@ Concretamente, em cada versão:
 | OpenMP | Antes do laço de passes | Depois do laço de passes |
 | MPI | Antes da distribuição dos dados | Depois da coleta do resultado |
 
-**Ficam de fora** em todas as versões: a geração da imagem de entrada e o
-cálculo do checksum. Juntos eles representam cerca de 1,3% do tempo
-(ver [perfilamento.md](perfilamento.md)) e não são alvo da paralelização.
+Fora da medição em todas as versões: geração da imagem de entrada e cálculo
+do checksum — cerca de 1,3% do tempo, conforme
+[perfilamento.md](perfilamento.md), e não são alvo da paralelização.
+Também fora: `MPI_Init` e `MPI_Finalize`.
 
-**Fica de fora também** a inicialização do ambiente MPI (`MPI_Init`) e o seu
-encerramento, por serem custo de infraestrutura e não de resolução do
-problema.
-
-### Por que incluir a comunicação do MPI
-
-A distribuição e a coleta dos dados não existem no sequencial, mas são
-trabalho necessário para que a versão MPI resolva o mesmo problema. Excluí-las
-da medição produziria um speedup que não corresponde ao custo real de usar
-MPI — seria comparar o problema inteiro resolvido sequencialmente com apenas
-a parte conveniente dele resolvida em paralelo.
-
-Com a comunicação incluída, o overhead aparece naturalmente na curva: é
-esperado que o speedup do MPI cresça menos que o do OpenMP, e que em
-tamanhos pequenos ele chegue a piorar com mais processos. Esse é o
-comportamento que as Issues #19 e #20 analisam, e escondê-lo tiraria o
-sentido delas.
+A comunicação do MPI (distribuição, halo, coleta) entra na medição. Ela não
+existe no sequencial, mas é trabalho necessário para resolver o mesmo
+problema; excluí-la produziria speedup que não corresponde ao custo real de
+usar MPI. Consequência esperada: o speedup do MPI cresce menos que o do
+OpenMP, e em N pequeno pode piorar com mais processos. Esse comportamento é
+objeto das Issues #19 e #20.
 
 ---
 
 ## 2. Repetições e estatística
 
-- **6 execuções** por configuração: a primeira é descartada como aquecimento
-  e as **5 seguintes** são as medições válidas.
-- O valor reportado é a **mediana** das 5 medições válidas.
-- São registrados também o **mínimo** e o **máximo**, para documentar a
-  dispersão.
+- 6 execuções por configuração: a primeira descartada, as 5 seguintes
+  válidas.
+- Valor reportado: **mediana** das 5 válidas.
+- Registrar também **mínimo** e **máximo**.
 
-Por que mediana e não média: a média é puxada por uma execução atípica, que
-em medição de desempenho aparece com frequência — basta o sistema
-operacional escalonar outra tarefa no meio. A mediana ignora os extremos.
+Mediana em vez de média: a média é deslocada por execução atípica, comum
+quando o sistema operacional escalona outra tarefa durante a medição.
 
-Por que 5 e não 3: o perfilamento mostrou dispersão abaixo de 2% entre
-execuções, mas essa estabilidade foi observada no sequencial. As versões
-paralelas tendem a variar mais, porque dependem de escalonamento de threads
-e de comunicação entre processos. Cinco medições dão margem para a mediana
-ser confiável também nelas.
+5 repetições em vez de 3: a dispersão de 2% observada no perfilamento vale
+para o sequencial. Versões paralelas variam mais, por escalonamento de
+threads e comunicação.
 
+> O Marco 1 usou medianas de 3 execuções, protocolo anterior a este. As
+> medições do Marco 2 seguem as 5 repetições definidas aqui e podem diferir
+> dos valores daquele documento.
 
 ---
 
 ## 3. Descarte de aquecimento
 
-A primeira execução de cada configuração é **sempre descartada**.
+A primeira execução de cada configuração é sempre descartada.
 
-A justificativa é concreta: na primeira execução, os vetores recém-alocados
-ainda não têm páginas de memória efetivamente atribuídas pelo sistema
-operacional. O primeiro acesso a cada página provoca uma falha de página, e
-esse custo entra no tempo medido. Além disso, caches e preditores de desvio
-começam vazios. A partir da segunda execução, o ambiente já está estabilizado.
+Motivo: na primeira execução os vetores recém-alocados ainda não têm páginas
+de memória atribuídas pelo sistema operacional, e o primeiro acesso a cada
+página gera falha de página dentro do trecho cronometrado. Caches e
+preditores de desvio também começam vazios.
 
 ---
 
 ## 4. Tamanhos de entrada e kernel
-
-Três tamanhos, mantidos em todas as versões:
 
 | Rótulo | N | Pixels | Memória dos dois buffers |
 |---|---|---|---|
@@ -92,68 +73,52 @@ Três tamanhos, mantidos em todas as versões:
 | Médio | 1000 | 1 milhão | ~8 MB |
 | Grande | 2000 | 4 milhões | ~32 MB |
 
-**Número de passes: 30** em todos os tamanhos, como no baseline do Marco 1.
+Passes: **30** em todos os tamanhos.
 
-**Kernel: 3×3 fixo.** O kernel é definido pelo código de referência do
-professor e não pode ser alterado — a lógica de cálculo é invariante do
-projeto.
+Kernel: **3×3 fixo**, definido pelo código de referência e inalterável.
 
-Os três tamanhos foram escolhidos para atravessar a hierarquia de memória da
-máquina de medição, que tem 16 MiB de cache L3: o pequeno cabe
-confortavelmente em cache, o médio cabe, e o grande não cabe. Isso permite
-observar se o speedup se comporta de forma diferente quando o problema passa
-a depender da memória principal.
+Os três tamanhos atravessam a hierarquia de memória da máquina de medição,
+cujo L3 é de 16 MiB: pequeno e médio cabem em cache, grande não cabe.
 
 ---
 
 ## 5. Graus de paralelismo
 
-Para cada tamanho de entrada, as versões paralelas são medidas com:
+Para cada tamanho, as versões paralelas são medidas com **1, 2, 4, 8 e 16
+unidades** — threads via `OMP_NUM_THREADS` no OpenMP, processos via
+`mpirun -np` no MPI.
 
-```
-1, 2, 4, 8 e 16 unidades
-```
+A máquina tem 8 núcleos físicos e 16 CPUs lógicas. A faixa vai até 16 para
+cobrir a região além dos núcleos reais, onde duas threads de um mesmo núcleo
+disputam as mesmas unidades de execução.
 
-onde "unidade" é thread no OpenMP (`OMP_NUM_THREADS`) e processo no MPI
-(`mpirun -np`).
-
-A máquina de medição tem 8 núcleos físicos e 16 CPUs lógicas. A medição vai
-até 16 justamente para mostrar o que acontece além do número de núcleos
-reais: espera-se que o ganho de 8 para 16 seja pequeno, porque as duas
-threads de um mesmo núcleo físico disputam as mesmas unidades de execução.
-
-Configurações com mais processos que CPUs disponíveis exigem
-`--oversubscribe` no `mpirun`, e esse fato deve ser registrado junto da
-medição.
+Configurações com mais processos que CPUs exigem `--oversubscribe` no
+`mpirun`; registrar isso junto da medição.
 
 ---
 
-## 6. Máquina e cuidados durante a medição
+## 6. Máquina e condições
 
-Todas as medições de uma mesma curva devem ser feitas **na mesma máquina, na
-mesma sessão**. Tempos de máquinas diferentes não são comparáveis e não podem
-ser misturados num mesmo gráfico.
+Todas as medições de uma mesma curva: mesma máquina, mesma sessão. Tempos de
+máquinas diferentes não podem ser misturados num gráfico.
 
-A máquina e as versões de ferramentas estão registradas em
-[ambiente.md](ambiente.md).
+Máquina e versões de ferramentas em [ambiente.md](ambiente.md).
 
-Cuidados a observar:
+Condições exigidas:
 
-- Fechar navegador, editores e demais aplicativos antes de medir.
+- Navegador, editores e demais aplicativos fechados.
 - Nenhum outro contêiner em execução.
-- Notebook ligado na tomada e em modo de desempenho — em modo de economia de
-  bateria a frequência do processador é reduzida e os tempos ficam
-  inconsistentes entre execuções.
-- Não usar a máquina durante a medição.
-- Rodar a bateria completa de medições de uma vez, para que todas as
+- Notebook na tomada e em modo de desempenho. Em economia de bateria a
+  frequência do processador cai e os tempos ficam inconsistentes.
+- Máquina sem uso durante a medição.
+- Bateria completa de medições rodada de uma vez, para que todas as
   configurações enfrentem as mesmas condições térmicas.
 
 ---
 
 ## 7. Formato dos dados
 
-As medições são gravadas em CSV em `dados/medicoes/`, com uma linha por
-execução válida:
+CSV em `dados/medicoes/`, uma linha por execução válida:
 
 ```
 versao,N,passes,unidades,repeticao,tempo_s,checksum
@@ -165,58 +130,59 @@ versao,N,passes,unidades,repeticao,tempo_s,checksum
 | `N` | Lado da imagem |
 | `passes` | Número de passes (30) |
 | `unidades` | Threads ou processos; 1 para o sequencial |
-| `repeticao` | 1 a 5 (a execução de aquecimento não é gravada) |
+| `repeticao` | 1 a 5; a execução de aquecimento não é gravada |
 | `tempo_s` | Tempo medido em segundos |
-| `checksum` | Checksum produzido, para rastrear corretude junto do tempo |
+| `checksum` | Checksum produzido |
 
-Gravar as execuções individuais, e não apenas a mediana, é deliberado: a
-mediana pode ser recalculada a partir dos dados brutos, mas o contrário é
-impossível. O CSV é a evidência; as tabelas e os gráficos são derivados dele.
+Gravar execuções individuais, não medianas: a mediana é recalculável a
+partir dos dados brutos, o inverso não. O CSV é a evidência.
 
-Incluir o checksum em cada linha permite detectar, ao analisar os dados, uma
-configuração que produziu tempo bom mas resultado errado.
+O checksum em cada linha permite identificar configuração com tempo válido e
+resultado errado.
+
+### Resumo derivado
+
+`scripts/resumir.py` lê os CSV brutos e grava `dados/medicoes/resumo.csv`,
+com uma linha por configuração:
+
+```
+versao,N,passes,unidades,execucoes,mediana_s,min_s,max_s,dispersao_pct,checksum
+```
+
+É daí que saem as tabelas dos documentos e os gráficos da Issue #23. O
+arquivo é derivado e pode ser regerado a qualquer momento sem repetir as
+medições. Dispersão é `(máximo − mínimo) / mediana`, em percentual.
+
+O script avisa quando uma configuração produziu checksums diferentes entre
+execuções, o que indica não determinismo na implementação.
 
 ---
 
-## 8. Cálculo do speedup e da eficiência
-
-O speedup de uma configuração com `n` unidades é:
+## 8. Speedup e eficiência
 
 ```
 S(n) = T_sequencial / T_paralelo(n)
-```
-
-A eficiência é:
-
-```
 E(n) = S(n) / n
 ```
 
-### A armadilha a evitar
+`T_sequencial` é o tempo da versão sequencial medida, não o da versão
+paralela com uma unidade. Usar a paralela com 1 thread como referência infla
+o speedup, porque esse tempo já inclui criação de threads e custo das
+diretivas.
 
-`T_sequencial` é o tempo da **versão sequencial medida**, e não o tempo da
-versão paralela rodando com uma única unidade.
-
-Usar a versão paralela com 1 thread como referência infla o speedup, porque
-esse tempo já carrega o custo de criação de threads e das diretivas de
-paralelização. O resultado é uma curva que parece melhor do que a realidade,
-e que esconde justamente o overhead que a análise deveria expor.
-
-Por isso o CSV registra a versão sequencial como linhas próprias, com
-`versao=sequencial` e `unidades=1`: ela é o denominador de todas as contas.
+Por isso o CSV registra a versão sequencial em linhas próprias, com
+`versao=sequencial` e `unidades=1`.
 
 ---
 
 ## 9. Validação junto da medição
 
-Toda execução registra o checksum. Uma configuração só é considerada válida
-se o checksum conferir com o gabarito em `dados/gabarito/`.
+Toda execução registra o checksum. Configuração só é válida se o checksum
+conferir com o gabarito em `dados/gabarito/`.
 
-A comparação deve ser feita com **tolerância numérica**, e não por igualdade
-exata de texto. A soma em ponto flutuante não é associativa: paralelizar a
-redução muda a ordem das parcelas e pode alterar os últimos dígitos do
-resultado, mesmo numa implementação correta. O critério de tolerância é
-definido na Issue #21.
+A comparação usa **tolerância numérica**, não igualdade exata de texto: a
+soma em ponto flutuante não é associativa, e paralelizar a redução altera a
+ordem das parcelas, podendo mudar os últimos dígitos mesmo em implementação
+correta. Critério de tolerância definido na Issue #21.
 
-Tempo de uma configuração cujo resultado está errado não é dado de
-desempenho — é apenas um número. Medição e validação andam juntas.
+Tempo de configuração com resultado errado não é dado de desempenho.
