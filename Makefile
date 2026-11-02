@@ -1,18 +1,27 @@
 # ─────────────────────────────────────────────────────────────────────
 # Filtro de Convolução 2D (blur 3x3) — CCO085 2026/2 — IESB
-# Compila as três versões: sequencial, OpenMP e MPI.
 #
-#   make           compila tudo que já existe
-#   make seq       só o sequencial (gabarito)
-#   make instr     só o sequencial instrumentado (perfilamento)
-#   make omp       só a versão OpenMP
-#   make mpi       só a versão MPI
-#   make clean     apaga os binários
+#   make                 compila as versões do projeto
+#   make sequencial      só o sequencial (gabarito)
+#   make instrumentado   só o sequencial instrumentado (perfilamento)
+#   make openmp          só a versão OpenMP
+#   make mpi             só a versão MPI
+#   make referencia      compila os exemplos do professor em referencia/
+#   make clean           apaga os binários do projeto
+#   make clean-tudo      apaga também os binários de referencia/
 # ─────────────────────────────────────────────────────────────────────
 
+# Projeto (C++)
 CXX      := g++
 MPICXX   := mpic++
 CXXFLAGS := -O2 -Wall
+
+# Exemplos de referência (C)
+CC       := gcc
+MPICC    := mpicc
+CFLAGS   := -O2 -Wall
+LDLIBS   := -lm
+
 OMPFLAGS := -fopenmp
 
 BIN := bin
@@ -39,13 +48,14 @@ ifneq ($(wildcard $(MPI_SRC)),)
   ALVOS += $(BIN)/convolucao_mpi
 endif
 
-.PHONY: all seq instr omp mpi clean
+.PHONY: all sequencial instrumentado openmp mpi referencia clean clean-tudo
+
 all: $(ALVOS)
 
-seq:   $(BIN)/convolucao_seq
-instr: $(BIN)/convolucao_instr
-omp:   $(BIN)/convolucao_omp
-mpi:   $(BIN)/convolucao_mpi
+sequencial:    $(BIN)/convolucao_seq
+instrumentado: $(BIN)/convolucao_instr
+openmp:        $(BIN)/convolucao_omp
+mpi:           $(BIN)/convolucao_mpi
 
 $(BIN):
 	mkdir -p $(BIN)
@@ -62,5 +72,39 @@ $(BIN)/convolucao_omp: $(OMP_SRC) | $(BIN)
 $(BIN)/convolucao_mpi: $(MPI_SRC) | $(BIN)
 	$(MPICXX) $(CXXFLAGS) -o $@ $<
 
+# ─────────────────────────────────────────────────────────────────────
+# Exemplos fornecidos pelo professor (referencia/)
+#
+# São arquivos .c, compilados com gcc/mpicc e ligados à libm. Os binários
+# ficam ao lado dos fontes, e o .gitignore cuida de não versioná-los.
+# Os códigos de referencia/codigos/aulas/ são .cpp avulsos e não entram
+# aqui: compile-os individualmente com g++ quando precisar.
+# ─────────────────────────────────────────────────────────────────────
+
+REF      := referencia/codigos
+REF_BASE := $(REF)/00_base
+REF_OMP  := $(REF)/01_openmp
+REF_MPI  := $(REF)/02_mpi
+
+REF_BIN := $(patsubst %.c,%,$(wildcard $(REF_BASE)/*.c)) \
+           $(patsubst %.c,%,$(wildcard $(REF_OMP)/*.c)) \
+           $(patsubst %.c,%,$(wildcard $(REF_MPI)/*.c))
+
+referencia: $(REF_BIN)
+
+$(REF_BASE)/%: $(REF_BASE)/%.c
+	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
+
+$(REF_OMP)/%: $(REF_OMP)/%.c
+	$(CC) $(CFLAGS) $(OMPFLAGS) -o $@ $< $(LDLIBS)
+
+$(REF_MPI)/%: $(REF_MPI)/%.c
+	$(MPICC) $(CFLAGS) -o $@ $< $(LDLIBS)
+
+# ─────────────────────────────────────────────────────────────────────
+
 clean:
 	rm -rf $(BIN)
+
+clean-tudo: clean
+	rm -f $(REF_BIN)
