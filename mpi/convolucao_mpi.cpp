@@ -87,10 +87,14 @@ int main(int argc, char** argv) {
     int cima  = (rank > 0)          ? rank - 1 : MPI_PROC_NULL;
     int baixo = (rank < nprocs - 1) ? rank + 1 : MPI_PROC_NULL;
 
-    double t_comunicacao = 0.0;
+    double t_comunicacao = 0.0;  // soma do tempo de troca de halo (#19)
+    double t_calculo     = 0.0;  // soma do tempo do laco do filtro (#19)
 
-    // [MEDICAO] Barreira para todos comecarem juntos; mede so os passes do filtro,
-    // o mesmo trecho que o sequencial cronometra (sem inicializacao nem checksum).
+    /* [MEDICAO] Conforme docs/protocolo-medicao.md, o tempo do MPI vai de antes
+     * da distribuicao dos dados ate depois da coleta do resultado. Aqui nao ha
+     * distribuicao (cada processo gera a sua faixa), entao o cronometro comeca
+     * nos passes e so para depois do MPI_Gatherv. Inicializacao e checksum
+     * ficam fora, como no sequencial. A barreira faz todos comecarem juntos. */
     MPI_Barrier(MPI_COMM_WORLD);
     double t0 = MPI_Wtime();
 
@@ -119,6 +123,7 @@ int main(int argc, char** argv) {
          * de 1 a N-2), entao pulamos quando a linha global for uma delas.
          * A soma percorre dy e dx na mesma ordem do sequencial, para cada pixel
          * dar exatamente o mesmo float (soma de float depende da ordem). */
+        double tk = MPI_Wtime();
         for (int l = 1; l <= linhas; l++) {
             int y = inicio + l - 1;                  // linha global
             if (y == 0 || y == N - 1) continue;
@@ -130,18 +135,16 @@ int main(int argc, char** argv) {
                 b[(size_t)l * N + x] = s / 9.0f;
             }
         }
+        t_calculo += MPI_Wtime() - tk;
         a.swap(b);  // o resultado deste passe vira a entrada do proximo
     }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    double t1 = MPI_Wtime();
 
     /* ----- Reuniao do resultado (#18) -----
      * MPI_Gatherv (coletiva) junta as faixas no processo 0. E a versao "v"
      * porque as faixas podem ter tamanhos diferentes quando N nao e multiplo de
      * nprocs; cada processo informa quantos floats envia (contagens) e onde eles
      * entram na imagem final (deslocamentos). So o processo 0 precisa desses vetores. */
-    // [MEDICAO] o gather fica fora do tempo principal, como o checksum no sequencial
+    // [MEDICAO] o gather entra no tempo total (protocolo) e tambem e medido a parte (#19)
     double tg = MPI_Wtime();
     vector<float> imagem;
     vector<int> contagens, deslocamentos;
@@ -161,12 +164,14 @@ int main(int argc, char** argv) {
                 rank == 0 ? contagens.data() : nullptr,
                 rank == 0 ? deslocamentos.data() : nullptr,
                 MPI_FLOAT, 0, MPI_COMM_WORLD);
-    double t_gather = MPI_Wtime() - tg;
+    double t1 = MPI_Wtime();  // no processo 0, o Gatherv so termina com tudo recebido
+    double t_gather = t1 - tg;
 
-    /* Maior tempo de comunicacao entre os processos (coletiva MPI_Reduce com
-     * MPI_MAX): o processo mais lento e o que define o tempo total. */
-    double t_com_max = 0.0;
-    MPI_Reduce(&t_comunicacao, &t_com_max, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    /* Maiores tempos de calculo e de halo entre os processos (coletiva
+     * MPI_Reduce com MPI_MAX): o processo mais lento e o que define o tempo
+     * total. Os dois valores vem do mesmo vetor para uma unica chamada. */
+    double t_local[2] = {t_calculo, t_comunicacao}, t_max[2] = {0.0, 0.0};
+    MPI_Reduce(t_local, t_max, 2, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
     /* Checksum no processo 0, somando a imagem inteira na MESMA ORDEM do
      * sequencial. Nao usamos MPI_Reduce de somas parciais aqui de proposito:
@@ -176,8 +181,8 @@ int main(int argc, char** argv) {
         double soma = 0;
         for (size_t i = 0; i < (size_t)N * N; i++) soma += imagem[i];
         printf("N=%d passes=%d  checksum=%.2f  tempo=%.6f s\n", N, P, soma, t1 - t0);
-        printf("processos=%d  comunicacao_halo=%.6f s  gather=%.6f s\n",
-               nprocs, t_com_max, t_gather);
+        printf("processos=%d  calculo=%.6f s  halo=%.6f s  gather=%.6f s\n",
+               nprocs, t_max[0], t_max[1], t_gather);
     }
 
     MPI_Finalize();
