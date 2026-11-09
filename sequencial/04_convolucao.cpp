@@ -1,4 +1,4 @@
-﻿/* Baseline 04 — Filtro de convolucao 2D (blur 3x3) sobre imagem sintetica
+/* Baseline 04 — Filtro de convolucao 2D (blur 3x3) sobre imagem sintetica
  * IESB 2026/2 — CCO085 — Prof. Rodrigo Goncalves Pinto
  * Aspecto interessante: decomposicao de dominio 2D; tratamento de bordas
  * (halo) quando paralelizado em MPI.

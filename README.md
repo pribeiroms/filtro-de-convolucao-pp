@@ -27,48 +27,57 @@ sequencial.
 | `sequencial/` | Código de referência do professor, sem alteração |
 | `openmp/` | Versão paralela com threads |
 | `mpi/` | Versão paralela com processos |
-| `scripts/` | Medição (gera CSV) e geração dos gráficos |
+| `scripts/` | Geração do gabarito, medição e gráficos |
 | `dados/gabarito/` | Saídas de referência do sequencial |
 | `dados/medicoes/` | CSVs produzidos pelas medições |
 | `graficos/` | Gráficos de speedup, eficiência e escalabilidade |
-| `docs/` | Documentos de entrega |
+| `docs/` | Documentos de entrega e registro do ambiente |
+| `referencia/` | Material fornecido pelo professor (não é trabalho do grupo) |
 | `bin/` | Binários compilados (não versionado) |
 
 ---
 
 ## Como rodar do zero
 
-### 1. Ambiente
+O repositório é autossuficiente: basta clonar e subir o contêiner. Nada
+fora deste repositório é necessário.
 
-O ambiente de referência é o do laboratório: Linux, `g++` e OpenMPI.
-Em casa, usamos o contêiner Docker da disciplina (Roteiro B).
-
-Com o contêiner, esta pasta fica visível em `/lab/projeto`. Isso exige
-que o `docker-compose.yml` do ambiente monte o volume correspondente:
-
-```yaml
-volumes:
-  - ../projeto:/lab/projeto
-```
-
-Confira que as ferramentas estão presentes:
+### 1. Clonar
 
 ```bash
-g++ --version
-mpic++ --version
-mpirun --version
+git clone https://github.com/pribeiroms/filtro-de-convolucao-pp.git
+cd filtro-de-convolucao-pp
 ```
 
-### 2. Compilar
+### 2. Subir o ambiente
+
+Requisito: Docker e Docker Compose instalados.
+
+```bash
+docker compose build                   # só na primeira vez
+docker compose run --rm projeto        # abre um shell em /lab
+```
+
+O ambiente é Ubuntu 24.04 com `g++`, OpenMPI, `matplotlib` e `pandas` — o
+mesmo conjunto do ambiente oficial da disciplina, para que os resultados
+sejam comparáveis aos do laboratório.
+
+No VS Code, a extensão Dev Containers abre o projeto direto no contêiner
+pela configuração em `.devcontainer/`.
+
+Alternativa sem Docker: em qualquer Linux com `g++` e OpenMPI instalados,
+os comandos abaixo funcionam sem alteração.
+
+### 3. Compilar
 
 ```bash
 make
 ```
 
-Os binários vão para `bin/`. Para compilar só uma versão: `make seq`,
-`make omp` ou `make mpi`.
+Os binários vão para `bin/`. Para compilar só uma versão: `make sequencial`,
+`make openmp` ou `make mpi`.
 
-### 3. Executar
+### 4. Executar
 
 Os dois argumentos são `N` (lado da imagem) e `P` (número de passes).
 
@@ -85,19 +94,21 @@ mpirun -np 4 ./bin/convolucao_mpi 2000 30
 
 As três execuções devem imprimir **o mesmo checksum**.
 
-### 4. Gerar o gabarito
+### 5. Gerar o gabarito
 
-O gabarito são as saídas do sequencial, usadas para validar as versões
-paralelas. Gere uma vez e não altere mais:
+O gabarito são as saídas de referência do sequencial, usadas para validar
+as versões paralelas. Já está versionado em `dados/gabarito/`; só precisa
+ser regerado se o código sequencial fornecido mudar.
 
 ```bash
-mkdir -p dados/gabarito
-for N in 500 1000 2000; do
-  ./bin/convolucao_seq $N 30 > dados/gabarito/seq_${N}_30.txt
-done
+./scripts/gerar_gabarito.sh
 ```
 
-### 5. Medir e gerar gráficos
+O script roda o sequencial para N = 500, 1000 e 2000 com 30 passes e grava
+um arquivo por tamanho. O tempo de execução é descartado de propósito: ele
+varia a cada execução e não faz parte do resultado.
+
+### 6. Medir e gerar gráficos
 
 ```bash
 ./scripts/medir.sh                 # produz dados/medicoes/*.csv
@@ -109,11 +120,11 @@ python3 scripts/gerar_graficos.py  # produz graficos/*.png
 ## Perfilamento
 
 A pasta `sequencial/` traz também `04_convolucao_instrumentado.cpp`, uma
-cópia com medição de tempo por trecho — não deve
+cópia com medição de tempo por trecho — **não é o gabarito** e não deve
 ser usada para validação. Ela serviu para identificar o hotspot:
 
 ```bash
-make instr
+make instrumentado
 ./bin/convolucao_instr 2000 30
 ```
 
@@ -138,6 +149,31 @@ O script tambem gera a tabela de medianas dos schedules em
 
 ---
 
+## Material de referência
+
+A pasta `referencia/` contém os códigos de exemplo e o script de medição
+**fornecidos pelo professor**. Nada ali é de autoria do grupo. Para
+compilá-los:
+
+```bash
+make referencia
+```
+
+---
+
+## Observações sobre o ambiente
+
+- Dentro do contêiner o `mpirun` roda como root sem flag extra, porque a
+  imagem define `OMPI_ALLOW_RUN_AS_ROOT`.
+- Tempos medidos em máquinas diferentes não são comparáveis entre si. Cada
+  curva de speedup precisa ser construída com todas as medições feitas na
+  mesma máquina. Veja [docs/ambiente.md](docs/ambiente.md).
+
+---
+
 ## Regra inviolável
 
-O arquivo `sequencial/04_convolucao.cpp` é o código base. **A lógica de cálculo e a entrada não podem ser alteradas**
+O arquivo `sequencial/04_convolucao.cpp` é o código entregue pelo
+professor. **A lógica de cálculo e a entrada não podem ser alteradas**
+em hipótese alguma — ele é a referência contra a qual tudo é medido e
+validado.

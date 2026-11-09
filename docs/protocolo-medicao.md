@@ -1,4 +1,4 @@
-﻿# Protocolo de medição
+# Protocolo de medição
 
 Regras válidas para todas as medições do projeto — baseline sequencial,
 OpenMP e MPI —, conforme a Issue #7.

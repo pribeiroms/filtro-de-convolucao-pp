@@ -11,6 +11,15 @@ sequencial/04_convolucao_instrumentado
 openmp/convolucao_omp
 mpi/convolucao_mpi
 
+# ── Material de referência: versiona só os fontes ────────────────────
+# Os exemplos da disciplina compilam com o mesmo nome do fonte, sem
+# extensão, então a regra ignora tudo e reinclui apenas o código.
+referencia/codigos/**/*
+!referencia/codigos/**/
+!referencia/codigos/**/*.c
+!referencia/codigos/**/*.cpp
+!referencia/codigos/**/*.h
+
 # ── Python (scripts de gráficos) ─────────────────────────────────────
 __pycache__/
 *.pyc
