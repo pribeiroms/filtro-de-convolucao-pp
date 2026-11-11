@@ -56,7 +56,7 @@ checksum_esperado() {
 # O OpenMPI recusa mais processos que CPUs sem --oversubscribe
 # (protocolo, secao 5). Outros lancadores nao conhecem a opcao.
 # ---------------------------------------------------------------
-CPUS=$(nproc)
+CPUS=$(lscpu -p=Core,Socket | grep -v '^#' | sort -u | wc -l)
 eh_openmpi() { "$MPIRUN" --version 2>&1 | grep -q "Open MPI"; }
 
 opcoes_mpirun() {

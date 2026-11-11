@@ -155,45 +155,83 @@ desigual, CPU disputada), os vizinhos registram esse atraso como halo.
 
 ## 5. Overhead de comunicação (#19)
 
-> **A preencher** com a medição oficial (seção 7).
+Medição oficial de 11/11/2026, na máquina de referência do baseline.
+Medianas de 5 execuções por configuração, com uma de aquecimento
+descartada. Dados brutos em
+[../dados/medicoes/mpi.csv](../dados/medicoes/mpi.csv).
 
-Comportamento esperado:
-
-- **Cálculo** cai com `1/p`: cada processo fica com `N/p` linhas.
-- **Halo** não cai: cada processo troca sempre `2·N` floats por passe,
-  independentemente de `p`. Com mais processos, há mais trocas acontecendo
-  ao mesmo tempo e mais pontos de espera.
-- **Gather** move a imagem inteira (`N²` floats) para o processo 0, qualquer
-  que seja `p`.
-
-A fração de comunicação, portanto, **cresce com o número de processos**. E
-como cálculo cresce com `N²` e halo com `N`, ela é **maior em imagens
-pequenas**: em N = 500 a comunicação domina antes do que em N = 2000.
-
-### Teste preliminar (não é medição oficial)
-
-Rodado no notebook da Paula (Windows, MS-MPI, 12 CPUs lógicas), N = 2000,
-mediana de 5 execuções. Serve só para conferir que os scripts funcionam e
-que a tendência aparece. **Não usar no relatório:** é outra máquina e outro
-sistema, diferentes do baseline.
+### N = 2000
 
 | Processos | Tempo | Cálculo | Halo | Gather | Comunicação |
 |---|---|---|---|---|---|
-| 1 | 0,187 s | 0,180 s | 0,000 s | 0,008 s | 4% |
-| 2 | 0,088 s | 0,080 s | 0,005 s | 0,007 s | 13% |
-| 4 | 0,080 s | 0,065 s | 0,017 s | 0,008 s | 31% |
-| 16 | 0,115 s | 0,021 s | 0,079 s | 0,029 s | 93% |
+| 1 | 0,346319 s | 0,330064 s | 0,000016 s | 0,013330 s | 3,9% |
+| 2 | 0,180680 s | 0,166464 s | 0,002750 s | 0,010945 s | 7,6% |
+| 4 | 0,097152 s | 0,084558 s | 0,003825 s | 0,010352 s | 14,6% |
+| 8 | 0,095946 s | 0,079751 s | 0,037606 s | 0,014097 s | 53,9% |
+| 16 | 0,077513 s | 0,044822 s | 0,016004 s | 0,014768 s | 39,7% |
 
-Com 16 processos, mais do que as 12 CPUs da máquina, o cálculo continua
-caindo, mas o halo explode: processos dividem a mesma CPU e um espera o
-outro ser escalonado para concluir a troca. O tempo total piora em relação a
-4 processos.
+### N = 1000
+
+| Processos | Tempo | Cálculo | Halo | Gather | Comunicação |
+|---|---|---|---|---|---|
+| 1 | 0,085414 s | 0,082620 s | 0,000005 s | 0,002304 s | 2,7% |
+| 2 | 0,044234 s | 0,041019 s | 0,001024 s | 0,002476 s | 7,9% |
+| 4 | 0,024762 s | 0,020594 s | 0,001284 s | 0,002463 s | 15,1% |
+| 8 | 0,023346 s | 0,020801 s | 0,010763 s | 0,002911 s | 58,6% |
+| 16 | 0,016280 s | 0,011142 s | 0,001587 s | 0,003535 s | 31,5% |
+
+### N = 500
+
+| Processos | Tempo | Cálculo | Halo | Gather | Comunicação |
+|---|---|---|---|---|---|
+| 1 | 0,022111 s | 0,021145 s | 0,000003 s | 0,000603 s | 2,7% |
+| 2 | 0,012184 s | 0,011037 s | 0,000994 s | 0,000663 s | 13,6% |
+| 4 | 0,006277 s | 0,005343 s | 0,000639 s | 0,000700 s | 21,3% |
+| 8 | 0,005005 s | 0,004266 s | 0,002014 s | 0,000725 s | 54,7% |
+| 16 | 0,004482 s | 0,002734 s | 0,000660 s | 0,001251 s | 42,6% |
+
+`Comunicação` é `(halo + gather) / tempo`.
+
+### Como ler estes números
+
+`Cálculo` e `halo` são o **maior valor entre os processos**, obtido por
+`MPI_Reduce` com `MPI_MAX`, e podem vir de processos diferentes. Por isso a
+soma das três colunas não fecha com o tempo total: em N = 2000 com 8
+processos, cálculo e halo somados passam do tempo medido. A coluna de
+comunicação é, portanto, um limite superior, não uma partição exata.
+
+### O que os dados confirmam
+
+**O cálculo cai com o número de processos, mas não com `1/p`.** Em
+N = 2000, de 1 para 16 processos o cálculo cai de 0,330 s para 0,0448 s —
+fator 7,4, não 16. A queda acompanha o mesmo platô observado no OpenMP e
+discutido na [análise experimental](analise-experimental.md): o filtro é
+limitado por largura de banda de memória, e processos adicionais não trazem
+mais banda.
+
+**O gather não depende de `p`.** Fica entre 0,010 s e 0,015 s em todas as
+configurações de N = 2000, como previsto: ele move `N²` floats para o
+processo 0 qualquer que seja o número de processos. Com 1 processo já custa
+0,013 s, e é a razão de a versão MPI com 1 processo ser mais lenta que o
+sequencial.
+
+**O halo cresce com `p`, mas de forma irregular.** Com 1 processo é
+praticamente zero — não há vizinho, e o `MPI_PROC_NULL` não transfere nada.
+Cresce até 0,0376 s com 8 processos e cai para 0,0160 s com 16. Essa
+irregularidade vem do que o halo realmente mede: o `Sendrecv` só retorna
+quando o vizinho chega à troca, então o tempo inclui **espera**, não só
+transferência. Quanto mais processos disputam as mesmas CPUs, mais variável
+fica esse tempo de espera — a dispersão nessas configurações chegou a 37%
+em N = 2000 com 16 processos.
+
+**A fração de comunicação cresce com `p` e é maior em imagens pequenas.**
+Com 4 processos, ela é de 14,6% em N = 2000 e 21,3% em N = 500. O motivo é
+dimensional: o cálculo cresce com `N²` e o halo com `N`, então quanto menor
+a imagem, maior o peso relativo da borda.
 
 ---
 
 ## 6. Speedup por número de processos (#20)
-
-> **A preencher** com a medição oficial (seção 7).
 
 ```
 S(p) = T_sequencial / T_mpi(p)
@@ -201,12 +239,48 @@ E(p) = S(p) / p
 ```
 
 `T_sequencial` é o tempo do código de referência, não o do MPI com 1
-processo (protocolo, seção 8).
+processo (protocolo, seção 8). As medianas do baseline usadas como
+denominador: 0,018378 s para N = 500, 0,074939 s para N = 1000 e
+0,287750 s para N = 2000.
 
-**O resultado não muda com o número de processos.** O
-`scripts/medir_mpi.sh` compara o checksum de cada execução com o gabarito e
-termina com erro se algum divergir. O `scripts/graficos_mpi.py` confere de
-novo que todas as configurações de um mesmo `N` deram o mesmo checksum.
+| Processos | N = 500 | N = 1000 | N = 2000 | Amdahl |
+|---|---|---|---|---|
+| 1 | 0,83× | 0,88× | 0,83× | 1,00× |
+| 2 | 1,51× | 1,69× | 1,59× | 1,97× |
+| 4 | 2,93× | 3,03× | 2,96× | 3,85× |
+| 8 | 3,67× | 3,21× | 3,00× | 7,32× |
+| 16 | 4,10× | 4,60× | 3,71× | 13,36× |
+
+Eficiência correspondente:
+
+| Processos | N = 500 | N = 1000 | N = 2000 |
+|---|---|---|---|
+| 1 | 83,1% | 87,7% | 83,1% |
+| 2 | 75,4% | 84,7% | 79,6% |
+| 4 | 73,2% | 75,7% | 74,0% |
+| 8 | 45,9% | 40,1% | 37,5% |
+| 16 | 25,6% | 28,8% | 23,2% |
+
+### Leitura
+
+**Com 1 processo o MPI é mais lento que o sequencial** (0,83×). Não é erro:
+a versão MPI paga o `MPI_Gatherv` da imagem inteira, que o sequencial não
+tem. Em N = 2000 são 0,013 s de gather sobre 0,330 s de cálculo.
+
+**Até 4 processos a escala é boa**, com eficiência em torno de 74%, apesar
+da penalidade inicial do gather.
+
+**Entre 4 e 8 processos a curva empaca**: em N = 2000 o speedup sai de
+2,96× para 3,00×. A eficiência cai de 74% para 37,5%. O mesmo platô aparece
+na versão OpenMP, que não tem comunicação alguma — o que indica que a causa
+está no hardware, não no MPI.
+
+**Com 16 processos o comportamento é irregular**, e a dispersão entre
+execuções sobe muito (de 5% em 2 processos para 37% em 16). São 16
+processos disputando 8 núcleos físicos, com `--oversubscribe`.
+
+A discussão completa do afastamento em relação a Amdahl, comum às duas
+versões, está na [análise experimental](analise-experimental.md).
 
 ---
 

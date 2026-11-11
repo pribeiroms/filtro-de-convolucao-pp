@@ -17,7 +17,7 @@ mede() {
   local kind=$1 n=$2 t=$3 sch=$4 ch=$5 r out c tm exp rep
   exp=$(esperado "$n")
   for r in $(seq 1 $REPETICOES); do
-    if [[ "$kind" == openmp ]]; then
+        if [[ "$kind" == openmp || "$kind" == schedule ]]; then
       out=$(OMP_NUM_THREADS=$t bin/convolucao_omp "$n" "$PASSES" "$t" "$sch" "$ch")
     else
       out=$(bin/convolucao_seq "$n" "$PASSES")
