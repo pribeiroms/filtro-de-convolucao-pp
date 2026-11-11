@@ -19,11 +19,15 @@ int main(int argc, char** argv) {
     int P = (argc > 2) ? atoi(argv[2]) : 30;
     int threads = (argc > 3) ? atoi(argv[3]) : omp_get_max_threads();
     const char* schedule = (argc > 4) ? argv[4] : "static";
-    int chunk = (argc > 5) ? atoi(argv[5]) : 1;
-    if (N < 3 || P < 0 || threads < 1 || chunk < 1 ||
+    // chunk 0 (ou negativo) = usar o tamanho padrao do runtime. Para static,
+    // esse padrao divide as linhas em blocos contiguos, um por thread, que e
+    // o que preserva a localidade de cache. Um chunk pequeno espalha linhas
+    // vizinhas entre threads diferentes e derruba o desempenho.
+    int chunk = (argc > 5) ? atoi(argv[5]) : 0;
+    if (N < 3 || P < 0 || threads < 1 ||
         static_cast<size_t>(N) > numeric_limits<size_t>::max() / static_cast<size_t>(N) ||
         static_cast<size_t>(N) > static_cast<size_t>(numeric_limits<long long>::max())) {
-        fprintf(stderr, "Uso: %s [N>=3] [passes>=0] [threads] [static|dynamic|guided] [chunk]\n", argv[0]);
+        fprintf(stderr, "Uso: %s [N>=3] [passes>=0] [threads] [static|dynamic|guided] [chunk>=0, 0=padrao]\n", argv[0]);
         return 1;
     }
     const size_t lado = static_cast<size_t>(N);
@@ -42,7 +46,17 @@ int main(int argc, char** argv) {
     for (int p = 0; p < P; p++) {
         // a e b sao buffers distintos. Cada iteracao escreve um unico pixel
         // interno de b; os pixels de borda permanecem como no baseline.
-        #pragma omp parallel for collapse(2) schedule(runtime) default(none) shared(a, b, N)
+        //
+        // A paralelizacao e so sobre as linhas (y), sem collapse: cada thread
+        // fica com um bloco de linhas inteiras e contiguas na memoria. Com
+        // collapse(2) o espaco de iteracao vira pixel a pixel, threads passam
+        // a dividir a mesma linha e a escrever na mesma linha de cache
+        // (false sharing), o que torna a versao paralela mais lenta que a
+        // sequencial.
+        //
+        // 'lado' entra no shared porque default(none) exige que toda variavel
+        // usada na regiao esteja declarada, inclusive as const.
+        #pragma omp parallel for schedule(runtime) default(none) shared(a, b, N, lado)
         for (int y = 1; y < N - 1; y++)
             for (int x = 1; x < N - 1; x++) {
                 float s = 0;
