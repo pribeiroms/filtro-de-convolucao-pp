@@ -128,6 +128,25 @@ make instrumentado
 ./bin/convolucao_instr 2000 30
 ```
 
+## OpenMP: compilacao, medicao e corretude
+
+```bash
+make openmp
+OMP_NUM_THREADS=8 ./bin/convolucao_omp 2000 30
+# Argumentos opcionais: N passes threads schedule chunk
+./bin/convolucao_omp 2000 30 8 dynamic 64
+```
+
+O codigo, a analise de compartilhamento e corridas, e a interpretacao dos
+experimentos estao em [docs/openmp.md](docs/openmp.md). Na maquina do
+laboratorio, execute `bash scripts/medir_openmp.sh`: o script segue as seis
+execucoes por configuracao do protocolo, valida cada checksum com o gabarito,
+grava os dados brutos em `dados/medicoes/openmp*.csv` e gera
+`graficos/openmp_speedup.svg`. Para medir threads adicionais, defina
+`THREADS_EXTRA="12 20"`. Os artefatos dependem da maquina onde a medicao roda.
+O script tambem gera a tabela de medianas dos schedules em
+`docs/openmp_resultados.md`.
+
 ---
 
 ## Material de referência
