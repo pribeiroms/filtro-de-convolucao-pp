@@ -1,0 +1,10 @@
+services:
+  projeto:
+    build: .
+    image: filtro-convolucao-pp:2026.2
+    container_name: filtro-convolucao-pp
+    working_dir: /lab
+    volumes:
+      - .:/lab
+    stdin_open: true
+    tty: true

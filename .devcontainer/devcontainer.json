@@ -1,0 +1,6 @@
+{
+  "name": "filtro-convolucao-pp",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "projeto",
+  "workspaceFolder": "/projeto"
+}
