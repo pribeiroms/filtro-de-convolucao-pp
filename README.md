@@ -110,10 +110,40 @@ varia a cada execução e não faz parte do resultado.
 
 ### 6. Medir e gerar gráficos
 
+Antes de medir, feche os demais aplicativos e deixe a máquina sem outras
+cargas. O protocolo está em
+[docs/protocolo-medicao.md](docs/protocolo-medicao.md).
+
+Rode a bateria inteira na mesma sessão, nesta ordem — o baseline é o
+denominador das curvas das duas versões paralelas:
+
 ```bash
-./scripts/medir.sh                 # produz dados/medicoes/*.csv
-python3 scripts/gerar_graficos.py  # produz graficos/*.png
+bash scripts/medir.sh          # baseline  -> dados/medicoes/sequencial.csv
+bash scripts/medir_openmp.sh   # OpenMP    -> openmp.csv e openmp_schedules.csv
+bash scripts/medir_mpi.sh      # MPI       -> mpi.csv
+bash scripts/medir_fraca.sh    # escalabilidade fraca
 ```
+
+Depois, consolidar as medianas e gerar os gráficos:
+
+```bash
+python3 scripts/resumir.py          # resumo.csv e resumo_fraca.csv
+python3 scripts/graficos_mpi.py     # graficos/mpi_*.png
+python3 scripts/graficos_openmp.py  # graficos/openmp_speedup.svg
+```
+
+O `medir_openmp.sh` já chama o `graficos_openmp.py` ao terminar.
+
+| Script | O que mede |
+|---|---|
+| `medir.sh` | Baseline sequencial nos três tamanhos |
+| `medir_openmp.sh` | Speedup por threads e comparação de políticas de escalonamento |
+| `medir_mpi.sh` | Speedup por processos, com cálculo, halo e gather separados |
+| `medir_fraca.sh` | Escalabilidade fraca: o tamanho cresce com a raiz do número de unidades |
+| `resumir.py` | Medianas, mínimos, máximos e dispersão a partir dos CSV brutos |
+
+Os resultados e a discussão estão em
+[docs/analise-experimental.md](docs/analise-experimental.md).
 
 ---
 

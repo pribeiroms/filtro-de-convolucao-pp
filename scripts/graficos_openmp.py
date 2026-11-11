@@ -11,13 +11,24 @@ rows = defaultdict(list)
 with src.open(newline='') as f:
     for row in csv.DictReader(f):
         rows[(row['versao'], int(row['N']), int(row['unidades']))].append(float(row['tempo_s']))
+# O baseline vem apenas de sequencial.csv. O medir_openmp.sh tambem grava
+# linhas "sequencial" dentro de openmp.csv; usar as duas fontes daria dois
+# baselines diferentes no mesmo repositorio, e os graficos discordariam dos
+# documentos. Descarta as de openmp.csv e le as de sequencial.csv.
+rows = defaultdict(list, {k: v for k, v in rows.items() if k[0] != 'sequencial'})
+base = Path('dados/medicoes/sequencial.csv')
+if not base.exists():
+    raise SystemExit('Execute scripts/medir.sh para criar o baseline.')
+with base.open(newline='') as f:
+    for row in csv.DictReader(f):
+        rows[('sequencial', int(row['N']), 1)].append(float(row['tempo_s']))
 def median(v):
     v = sorted(v); n = len(v)
     return v[n//2] if n % 2 else (v[n//2-1]+v[n//2])/2
 ns = sorted({k[1] for k in rows})
 threads = sorted({k[2] for k in rows if k[0] == 'openmp'})
 W,H=820,520; L,R,T,B=80,30,50,65
-colors=['#1769aa','#d1495b','#2a9d8f']
+colors=['#1769aa','#d1495b','#2a9d8f','#e9c46a','#6a4c93']  # uma por contagem de threads
 maxv=max((median(rows[('sequencial',n,1)])/median(rows[('openmp',n,t)]) for n in ns for t in threads if ('openmp',n,t) in rows), default=1)
 maxv=max(1,maxv*1.1); plotw=W-L-R; ploth=H-T-B
 svg=[f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">','<rect width="100%" height="100%" fill="white"/>','<text x="410" y="28" text-anchor="middle" font-family="sans-serif" font-size="18">Speedup OpenMP por threads</text>']
@@ -49,7 +60,10 @@ if schedule_file.exists():
              '| N | Schedule | Chunk | Mediana (s) |', '|---:|---|---:|---:|']
     for (n, sch, chunk), values in sorted(sched_rows.items()):
         lines.append(f'| {n} | {sch} | {chunk} | {median(values):.6f} |')
-    lines += ['', 'Interprete os resultados junto de [docs/openmp.md](openmp.md): o custo por pixel e uniforme,',
-              'entao static deve empatar ou ganhar. Dynamic e guided acrescentam custo de despacho e sincronizacao;',
-              'sem desbalanceamento suficiente para compensar esse custo, tendem a ser mais lentos.']
+    lines += ['', 'Interprete os resultados junto de [docs/openmp.md](openmp.md) e da secao 5 de',
+              '[docs/analise-experimental.md](analise-experimental.md). O custo por pixel e uniforme,',
+              'entao nao ha desbalanceamento para as politicas dinamicas corrigirem. O que separa as',
+              'politicas neste problema e o tamanho do pedaco: com chunk pequeno o static perde a',
+              'localidade dos blocos contiguos, que e sua principal vantagem, e o guided -- que comeca',
+              'com pedacos grandes e contiguos -- leva vantagem nos tres tamanhos medidos.']
     Path('docs/openmp_resultados.md').write_text('\n'.join(lines)+'\n', encoding='utf-8')
