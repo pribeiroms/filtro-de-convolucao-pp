@@ -142,20 +142,62 @@ escalaria muito mais perto da curva teórica no mesmo hardware.
 
 ## 5. Comparação entre as políticas de escalonamento
 
+Medição com 4 threads, mediana de 5 execuções após descarte de aquecimento.
 Dados em
-[../dados/medicoes/openmp_schedules.csv](../dados/medicoes/openmp_schedules.csv),
-medidos com 4 threads.
+[../dados/medicoes/openmp_schedules.csv](../dados/medicoes/openmp_schedules.csv).
 
-A diferença entre `static`, `dynamic` e `guided` é pequena neste problema, e
-a razão é estrutural: o custo de processar cada linha é idêntico ao de
-qualquer outra — mesmo número de pixels, mesmo número de operações por
-pixel, sem desvios dependentes dos dados. Não há desbalanceamento para
-nenhuma política corrigir.
+| N | `static,1` | `dynamic,1` | `dynamic,64` | `guided,1` |
+|---|---|---|---|---|
+| 500 | 0,007226 s | 0,005960 s | 0,006255 s | **0,005891 s** |
+| 1000 | 0,021937 s | 0,021081 s | 0,021085 s | **0,020625 s** |
+| 2000 | 0,086970 s | 0,093663 s | 0,107885 s | **0,084367 s** |
 
-O `static` é a escolha adequada porque distribui as iterações sem consultar
-nada em tempo de execução. O `dynamic` mantém um contador compartilhado que
-as threads disputam a cada pedaço, custo que só se paga quando as iterações
-têm duração variável.
+Diferença em relação ao melhor de cada linha:
+
+| N | `static,1` | `dynamic,1` | `dynamic,64` | `guided,1` |
+|---|---|---|---|---|
+| 500 | +22,7% | +1,2% | +6,2% | — |
+| 1000 | +6,4% | +2,2% | +2,2% | — |
+| 2000 | +3,1% | +11,0% | +27,9% | — |
+
+### O resultado contraria a expectativa inicial
+
+O plano do Marco 1 previa que o `static` venceria, pelo raciocínio de que o
+custo por linha é idêntico — mesmo número de pixels, mesmas operações, sem
+desvios dependentes dos dados — e portanto não haveria desbalanceamento para
+as políticas dinâmicas corrigirem, restando apenas o custo de despacho delas.
+
+O raciocínio sobre o balanceamento está certo: não há desbalanceamento neste
+problema. O que ele não considerou foi o **tamanho do pedaço**.
+
+A vantagem real do `static` neste problema não é o balanceamento, é a
+localidade: ele dá a cada thread um bloco contíguo de linhas, e cada thread
+percorre uma região da matriz que cabe no cache do seu núcleo. Com
+`chunk = 1`, porém, a distribuição passa a ser linha a linha em rodízio — a
+thread 0 fica com as linhas 1, 5, 9, 13… — e essa vantagem desaparece: cada
+thread toca a matriz inteira.
+
+O `guided` vence porque começa com pedaços grandes e vai reduzindo. Os
+primeiros pedaços são blocos contíguos de centenas de linhas, que é
+justamente o padrão de acesso favorável ao cache.
+
+A mesma lógica explica o `dynamic,64` ser o pior em N = 2000: pedaços de 64
+linhas são pequenos demais para um problema com 1998 linhas e 4 threads, e o
+custo de disputar o contador compartilhado a cada pedaço se soma à perda de
+localidade.
+
+### Consequência para as curvas de speedup
+
+A medição de escalabilidade das seções 2 e 3 usou `static,1`, que estes
+dados mostram não ser a melhor configuração. Em N = 2000 a diferença para o
+`guided` é de 3,1%, pequena o bastante para não alterar nenhuma conclusão —
+o platô entre 4 e 8 unidades continua, e a distância para a curva de Amdahl
+permanece de mesma ordem.
+
+Em N = 500 a diferença chega a 22,7%, o que sugere que a curva daquele
+tamanho poderia ser um pouco melhor com outra política. Não é o tamanho
+usado nas conclusões principais, que se apoiam em N = 2000 por ter a menor
+dispersão entre execuções.
 
 ---
 
