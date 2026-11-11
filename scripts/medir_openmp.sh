@@ -40,7 +40,7 @@ for n in $TAMANHOS; do
   for t in $THREADS; do mede openmp "$n" "$t" static 1; done
   mede seq "$n" 1 serial 0
   echo "Medição de schedules N=$n"
-  for spec in 'static 1' 'dynamic 1' 'dynamic 64' 'guided 1'; do
+  for spec in 'static 0' 'static 1' 'dynamic 1' 'dynamic 64' 'guided 1'; do
     read -r sch ch <<< "$spec"
     mede schedule "$n" 4 "$sch" "$ch"
   done
