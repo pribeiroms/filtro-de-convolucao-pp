@@ -114,25 +114,32 @@ Antes de medir, feche os demais aplicativos e deixe a máquina sem outras
 cargas. O protocolo está em
 [docs/protocolo-medicao.md](docs/protocolo-medicao.md).
 
-Rode a bateria inteira na mesma sessão, nesta ordem — o baseline é o
-denominador das curvas das duas versões paralelas:
+Um comando gera todos os dados do zero:
+
+```bash
+bash scripts/medir_tudo.sh
+```
+
+Ele executa as quatro medições na ordem correta, consolida as medianas e
+gera os gráficos. Leva cerca de dez minutos. Ao final, lista as
+configurações cuja dispersão entre execuções passou de 25%, para que se
+possa julgar se a máquina estava quieta o bastante durante a medição.
+
+Para rodar uma etapa isolada:
 
 ```bash
 bash scripts/medir.sh          # baseline  -> dados/medicoes/sequencial.csv
 bash scripts/medir_openmp.sh   # OpenMP    -> openmp.csv e openmp_schedules.csv
 bash scripts/medir_mpi.sh      # MPI       -> mpi.csv
 bash scripts/medir_fraca.sh    # escalabilidade fraca
+python3 scripts/resumir.py     # resumo.csv e resumo_fraca.csv
+python3 scripts/graficos_mpi.py
+python3 scripts/graficos_openmp.py
 ```
 
-Depois, consolidar as medianas e gerar os gráficos:
-
-```bash
-python3 scripts/resumir.py          # resumo.csv e resumo_fraca.csv
-python3 scripts/graficos_mpi.py     # graficos/mpi_*.png
-python3 scripts/graficos_openmp.py  # graficos/openmp_speedup.svg
-```
-
-O `medir_openmp.sh` já chama o `graficos_openmp.py` ao terminar.
+A ordem importa: o baseline é o denominador das curvas das duas versões
+paralelas, e o protocolo exige que todas as medições de uma curva saiam da
+mesma máquina e sessão.
 
 | Script | O que mede |
 |---|---|
@@ -141,9 +148,21 @@ O `medir_openmp.sh` já chama o `graficos_openmp.py` ao terminar.
 | `medir_mpi.sh` | Speedup por processos, com cálculo, halo e gather separados |
 | `medir_fraca.sh` | Escalabilidade fraca: o tamanho cresce com a raiz do número de unidades |
 | `resumir.py` | Medianas, mínimos, máximos e dispersão a partir dos CSV brutos |
+| `medir_tudo.sh` | Executa todos os anteriores na ordem correta |
 
 Os resultados e a discussão estão em
 [docs/analise-experimental.md](docs/analise-experimental.md).
+
+### 7. Validar a corretude
+
+```bash
+bash scripts/validar.sh
+```
+
+Compara o checksum de todas as configurações — três tamanhos, 1 a 16
+threads e 1 a 16 processos — com a referência, usando número de passes par e
+ímpar. Termina com erro se alguma divergir. Detalhes em
+[docs/validacao.md](docs/validacao.md).
 
 ---
 
